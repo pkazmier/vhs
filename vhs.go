@@ -37,6 +37,7 @@ type VHS struct {
 	close         func() error
 	KeyLogger     *KeyLogger
 	OverlayEvents []OverlayEvent
+	AudioEvents   []AudioEvent
 }
 
 // Options is the set of options for the setup.
@@ -58,6 +59,7 @@ type Options struct {
 	Style         StyleOptions
 	Caption       CaptionOptions
 	Overlay       OverlayOptions
+	Audio         AudioOptions
 }
 
 const (
@@ -115,6 +117,7 @@ func DefaultVHSOptions() Options {
 		WaitPattern:   defaultWaitPattern,
 		Caption:       DefaultCaptionOptions(),
 		Overlay:       DefaultOverlayOptions(),
+		Audio:         AudioOptions{Volume: 1.0},
 	}
 }
 

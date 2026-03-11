@@ -72,6 +72,7 @@ var CommandFuncs = map[parser.CommandType]CommandFunc{
 	token.ENV:         ExecuteEnv,
 	token.WAIT:        ExecuteWait,
 	token.OVERLAY:     ExecuteOverlay,
+	token.AUDIO:       ExecuteAudio,
 	token.CAPTION_ON:  ExecuteCaptionOn,
 	token.CAPTION_OFF: ExecuteCaptionOff,
 }
@@ -516,6 +517,9 @@ var Settings = map[string]CommandFunc{
 	"OverlayMarginLeft":      ExecuteSetOverlayMarginLeft,
 	"OverlayMarginRight":     ExecuteSetOverlayMarginRight,
 	"OverlayMarginVertical":  ExecuteSetOverlayMarginVertical,
+	"AudioVolume":            ExecuteSetAudioVolume,
+	"CaptionAudio":           ExecuteSetCaptionAudio,
+	"CaptionAudioVolume":     ExecuteSetCaptionAudioVolume,
 }
 
 // ExecuteSet applies the settings on the running vhs specified by the
@@ -1067,4 +1071,53 @@ func getJSONTheme(s string) (Theme, error) {
 		return DefaultTheme, fmt.Errorf("invalid `Set Theme %q: %w`", s, err)
 	}
 	return t, nil
+}
+
+// ExecuteAudio records an audio overlay event at the current frame timestamp.
+func ExecuteAudio(c parser.Command, v *VHS) error {
+	durationMs := int64(0)
+	if c.Options != "" {
+		dur, err := time.ParseDuration(c.Options)
+		if err != nil {
+			return fmt.Errorf("failed to parse audio duration: %w", err)
+		}
+		durationMs = dur.Milliseconds()
+	}
+
+	frameNum := atomic.LoadInt64(&v.currentFrame)
+	timeMs := frameNum * 1000 / int64(v.Options.Video.Framerate)
+
+	v.AudioEvents = append(v.AudioEvents, AudioEvent{
+		StartMs:    timeMs,
+		DurationMs: durationMs,
+		Volume:     v.Options.Audio.Volume,
+		FilePath:   c.Args,
+	})
+	return nil
+}
+
+// ExecuteSetAudioVolume sets the audio volume for subsequent Audio commands.
+func ExecuteSetAudioVolume(c parser.Command, v *VHS) error {
+	vol, err := strconv.ParseFloat(c.Args, 64)
+	if err != nil {
+		return fmt.Errorf("failed to parse audio volume: %w", err)
+	}
+	v.Options.Audio.Volume = vol
+	return nil
+}
+
+// ExecuteSetCaptionAudio sets the caption audio preset or file path.
+func ExecuteSetCaptionAudio(c parser.Command, v *VHS) error {
+	v.Options.Caption.Audio = c.Args
+	return nil
+}
+
+// ExecuteSetCaptionAudioVolume sets the caption audio volume.
+func ExecuteSetCaptionAudioVolume(c parser.Command, v *VHS) error {
+	vol, err := strconv.ParseFloat(c.Args, 64)
+	if err != nil {
+		return fmt.Errorf("failed to parse caption audio volume: %w", err)
+	}
+	v.Options.Caption.AudioVolume = vol
+	return nil
 }

@@ -155,7 +155,7 @@ func Evaluate(ctx context.Context, tape string, out io.Writer, opts ...Evaluator
 		// GIF as the frame sequence will change dimensions. This is fixable.
 		//
 		// We should remove if isSetting statement.
-		isSetting := cmd.Type == token.SET && cmd.Options != "TypingSpeed"
+		isSetting := cmd.Type == token.SET && cmd.Options != "TypingSpeed" && cmd.Options != "AudioVolume"
 
 		if isSetting {
 			fmt.Println(ErrorStyle.Render(fmt.Sprintf("WARN: 'Set %s %s' has been ignored. Move the directive to the top of the file.\nLearn more: https://github.com/charmbracelet/vhs#settings", cmd.Options, cmd.Args)))
@@ -199,6 +199,21 @@ func Evaluate(ctx context.Context, tape string, out io.Writer, opts ...Evaluator
 			return []error{err}
 		}
 		v.Options.Video.CaptionFile = assPath
+	}
+
+	// Generate audio track
+	hasCaptionAudio := v.Options.Caption.Audio != "" && len(v.KeyLogger.Events()) > 0
+	hasAudioEvents := len(v.AudioEvents) > 0
+
+	if hasCaptionAudio || hasAudioEvents {
+		audioPath, err := GenerateAudioTrack(
+			v.KeyLogger.Events(), v.AudioEvents,
+			v.Options.Caption, v.Options.Video,
+		)
+		if err != nil {
+			return []error{err}
+		}
+		v.Options.Video.AudioFile = audioPath
 	}
 
 	if err := v.Render(); err != nil {

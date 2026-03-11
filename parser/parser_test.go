@@ -481,3 +481,119 @@ func TestParseScreeenshot(t *testing.T) {
 		test.run(t)
 	})
 }
+
+func TestParseAudio(t *testing.T) {
+	t.Run("Audio with duration and file path", func(t *testing.T) {
+		l := lexer.New(`Audio@5s "narration.mp3"`)
+		p := New(l)
+		cmds := p.Parse()
+
+		if len(p.errors) > 0 {
+			t.Fatalf("Expected no errors, got %d: %v", len(p.errors), p.errors)
+		}
+		if len(cmds) != 1 {
+			t.Fatalf("Expected 1 command, got %d", len(cmds))
+		}
+		if cmds[0].Type != token.AUDIO {
+			t.Errorf("Expected AUDIO, got %s", cmds[0].Type)
+		}
+		if cmds[0].Options != "5s" {
+			t.Errorf("Expected options 5s, got %s", cmds[0].Options)
+		}
+		if cmds[0].Args != "narration.mp3" {
+			t.Errorf("Expected args narration.mp3, got %s", cmds[0].Args)
+		}
+	})
+
+	t.Run("Audio without duration", func(t *testing.T) {
+		l := lexer.New(`Audio "ding.wav"`)
+		p := New(l)
+		cmds := p.Parse()
+
+		if len(p.errors) > 0 {
+			t.Fatalf("Expected no errors, got %d: %v", len(p.errors), p.errors)
+		}
+		if len(cmds) != 1 {
+			t.Fatalf("Expected 1 command, got %d", len(cmds))
+		}
+		if cmds[0].Options != "" {
+			t.Errorf("Expected empty options, got %s", cmds[0].Options)
+		}
+		if cmds[0].Args != "ding.wav" {
+			t.Errorf("Expected args ding.wav, got %s", cmds[0].Args)
+		}
+	})
+}
+
+func TestParseAudioSettings(t *testing.T) {
+	t.Run("Set CaptionAudio", func(t *testing.T) {
+		l := lexer.New(`Set CaptionAudio click`)
+		p := New(l)
+		cmds := p.Parse()
+
+		if len(p.errors) > 0 {
+			t.Fatalf("Expected no errors, got %d: %v", len(p.errors), p.errors)
+		}
+		if len(cmds) != 1 {
+			t.Fatalf("Expected 1 command, got %d", len(cmds))
+		}
+		if cmds[0].Options != "CaptionAudio" {
+			t.Errorf("Expected option CaptionAudio, got %s", cmds[0].Options)
+		}
+		if cmds[0].Args != "click" {
+			t.Errorf("Expected args click, got %s", cmds[0].Args)
+		}
+	})
+
+	t.Run("Set CaptionAudioVolume", func(t *testing.T) {
+		l := lexer.New(`Set CaptionAudioVolume 0.5`)
+		p := New(l)
+		cmds := p.Parse()
+
+		if len(p.errors) > 0 {
+			t.Fatalf("Expected no errors, got %d: %v", len(p.errors), p.errors)
+		}
+		if cmds[0].Args != "0.5" {
+			t.Errorf("Expected args 0.5, got %s", cmds[0].Args)
+		}
+	})
+
+	t.Run("Set CaptionAudioVolume invalid", func(t *testing.T) {
+		l := lexer.New(`Set CaptionAudioVolume 1.5`)
+		p := New(l)
+		_ = p.Parse()
+
+		if len(p.errors) != 1 {
+			t.Fatalf("Expected 1 error, got %d", len(p.errors))
+		}
+		if !strings.Contains(p.errors[0].Msg, "CaptionAudioVolume must be a float between 0 and 1") {
+			t.Errorf("Unexpected error: %s", p.errors[0].Msg)
+		}
+	})
+
+	t.Run("Set AudioVolume", func(t *testing.T) {
+		l := lexer.New(`Set AudioVolume 0.8`)
+		p := New(l)
+		cmds := p.Parse()
+
+		if len(p.errors) > 0 {
+			t.Fatalf("Expected no errors, got %d: %v", len(p.errors), p.errors)
+		}
+		if cmds[0].Args != "0.8" {
+			t.Errorf("Expected args 0.8, got %s", cmds[0].Args)
+		}
+	})
+
+	t.Run("Set AudioVolume invalid", func(t *testing.T) {
+		l := lexer.New(`Set AudioVolume 2.0`)
+		p := New(l)
+		_ = p.Parse()
+
+		if len(p.errors) != 1 {
+			t.Fatalf("Expected 1 error, got %d", len(p.errors))
+		}
+		if !strings.Contains(p.errors[0].Msg, "AudioVolume must be a float between 0 and 1") {
+			t.Errorf("Unexpected error: %s", p.errors[0].Msg)
+		}
+	})
+}

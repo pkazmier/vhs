@@ -59,6 +59,7 @@ var CommandTypes = []CommandType{
 	token.PASTE,
 	token.ENV,
 	token.OVERLAY,
+	token.AUDIO,
 	token.CAPTION_ON,
 	token.CAPTION_OFF,
 }
@@ -190,6 +191,8 @@ func (p *Parser) parseCommand() []Command {
 		return []Command{p.parseEnv()}
 	case token.OVERLAY:
 		return []Command{p.parseOverlay()}
+	case token.AUDIO:
+		return []Command{p.parseAudio()}
 	case token.CAPTION_ON:
 		return []Command{p.parseCaptionOn()}
 	case token.CAPTION_OFF:
@@ -592,6 +595,32 @@ func (p *Parser) parseSet() Command {
 	case token.CAPTION_INACTIVITY_TIMER:
 		cmd.Args = p.parseTime()
 
+	case token.AUDIO_VOLUME:
+		cmd.Args = p.peek.Literal
+		p.nextToken()
+		val, err := strconv.ParseFloat(p.cur.Literal, 64)
+		if err != nil || val < 0 || val > 1 {
+			p.errors = append(
+				p.errors,
+				NewError(p.cur, "AudioVolume must be a float between 0 and 1"),
+			)
+		}
+
+	case token.CAPTION_AUDIO:
+		cmd.Args = p.peek.Literal
+		p.nextToken()
+
+	case token.CAPTION_AUDIO_VOLUME:
+		cmd.Args = p.peek.Literal
+		p.nextToken()
+		val, err := strconv.ParseFloat(p.cur.Literal, 64)
+		if err != nil || val < 0 || val > 1 {
+			p.errors = append(
+				p.errors,
+				NewError(p.cur, "CaptionAudioVolume must be a float between 0 and 1"),
+			)
+		}
+
 	case token.OVERLAY_FONT:
 		cmd.Args = p.peek.Literal
 		p.nextToken()
@@ -814,6 +843,25 @@ func (p *Parser) parseOverlay() Command {
 			cmd.Args += " "
 		}
 	}
+
+	return cmd
+}
+
+// parseAudio parses an audio command.
+// An audio command takes an optional duration and a file path.
+//
+//	Audio[@<duration>] "<file>"
+func (p *Parser) parseAudio() Command {
+	cmd := Command{Type: token.AUDIO}
+
+	cmd.Options = p.parseSpeed()
+
+	if p.peek.Type != token.STRING {
+		p.errors = append(p.errors, NewError(p.peek, p.cur.Literal+" expects string"))
+	}
+
+	cmd.Args = p.peek.Literal
+	p.nextToken()
 
 	return cmd
 }

@@ -57,6 +57,7 @@ type VideoOptions struct {
 	StartingFrame int
 	Style         *StyleOptions
 	CaptionFile   string
+	AudioFile     string
 }
 
 const (
@@ -129,7 +130,8 @@ func buildFFopts(opts VideoOptions, targetFile string) []string {
 	streamBuilder = streamBuilder.
 		WithMargin().
 		WithBar().
-		WithCorner()
+		WithCorner().
+		WithAudio(opts.AudioFile)
 
 	filterBuilder := NewVideoFilterBuilder(&opts).
 		WithCaptions(opts.CaptionFile).
@@ -142,13 +144,20 @@ func buildFFopts(opts VideoOptions, targetFile string) []string {
 	case gif:
 		filterBuilder = filterBuilder.WithGIF()
 	case webm:
+		filterBuilder = filterBuilder.WithEvenDimensions()
 		streamBuilder = streamBuilder.WithWebm()
 	case mp4:
+		filterBuilder = filterBuilder.WithEvenDimensions()
 		streamBuilder = streamBuilder.WithMP4()
 	}
 
 	args = append(args, streamBuilder.Build()...)
-	args = append(args, filterBuilder.Build()...)
+	// GIF format doesn't support audio
+	if filepath.Ext(targetFile) == gif {
+		args = append(args, filterBuilder.Build()...)
+	} else {
+		args = append(args, filterBuilder.BuildWithAudio(streamBuilder.audioStream)...)
+	}
 	args = append(args, targetFile)
 
 	return args

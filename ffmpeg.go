@@ -192,6 +192,22 @@ func (fb *FilterComplexBuilder) WithMarginFill(marginStream int) *FilterComplexB
 	return fb
 }
 
+// WithEvenDimensions pads the video to even width/height, required by
+// h264/vpx codecs with yuv420p pixel format. Adds at most 1 pixel per axis.
+func (fb *FilterComplexBuilder) WithEvenDimensions() *FilterComplexBuilder {
+	fb.filterComplex.WriteString(";")
+	_, _ = fmt.Fprintf(
+		fb.filterComplex,
+		`
+		[%s]pad=ceil(iw/2)*2:ceil(ih/2)*2[even]
+		`,
+		fb.prevStageName,
+	)
+	fb.prevStageName = "even"
+
+	return fb
+}
+
 // WithGIF adds gif options to ffmepg filter_complex.
 func (fb *FilterComplexBuilder) WithGIF() *FilterComplexBuilder {
 	fb.filterComplex.WriteString(";")
@@ -210,10 +226,19 @@ func (fb *FilterComplexBuilder) WithGIF() *FilterComplexBuilder {
 
 // Build returns filter_complex used in ffmepg.
 func (fb *FilterComplexBuilder) Build() []string {
-	return []string{
+	return fb.BuildWithAudio(0)
+}
+
+// BuildWithAudio returns filter_complex with optional audio stream mapping.
+func (fb *FilterComplexBuilder) BuildWithAudio(audioStream int) []string {
+	args := []string{
 		"-filter_complex", fb.filterComplex.String(),
 		"-map", "[" + fb.prevStageName + "]",
 	}
+	if audioStream > 0 {
+		args = append(args, "-map", fmt.Sprintf("%d:a", audioStream))
+	}
+	return args
 }
 
 // StreamBuilder generates streams used by ffmepg.
@@ -227,6 +252,7 @@ type StreamBuilder struct {
 	barStream    int
 	cornerStream int
 	marginStream int
+	audioStream  int
 }
 
 // NewStreamBuilder returns instance of StreamBuilder.
@@ -319,14 +345,29 @@ func (sb *StreamBuilder) WithCorner() *StreamBuilder {
 	return sb
 }
 
+// WithAudio adds an audio input stream.
+func (sb *StreamBuilder) WithAudio(audioFile string) *StreamBuilder {
+	if audioFile == "" {
+		return sb
+	}
+	sb.args = append(sb.args, "-i", audioFile)
+	sb.audioStream = sb.counter
+	sb.counter++
+	return sb
+}
+
 // WithMP4 adds mp4 stream with required config.
 func (sb *StreamBuilder) WithMP4() *StreamBuilder {
 	sb.args = append(sb.args,
 		"-vcodec", "libx264",
 		"-pix_fmt", "yuv420p",
-		"-an",
-		"-crf", "20",
 	)
+	if sb.audioStream > 0 {
+		sb.args = append(sb.args, "-c:a", "aac", "-b:a", "128k")
+	} else {
+		sb.args = append(sb.args, "-an")
+	}
+	sb.args = append(sb.args, "-crf", "20")
 
 	return sb
 }
@@ -335,7 +376,13 @@ func (sb *StreamBuilder) WithMP4() *StreamBuilder {
 func (sb *StreamBuilder) WithWebm() *StreamBuilder {
 	sb.args = append(sb.args,
 		"-pix_fmt", "yuv420p",
-		"-an",
+	)
+	if sb.audioStream > 0 {
+		sb.args = append(sb.args, "-c:a", "libvorbis")
+	} else {
+		sb.args = append(sb.args, "-an")
+	}
+	sb.args = append(sb.args,
 		"-crf", "30",
 		"-b:v", "0",
 	)

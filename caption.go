@@ -66,6 +66,8 @@ type CaptionOptions struct {
 	MarginLeft        int
 	MarginRight       int
 	MarginVertical    int
+	Audio             string  // preset name (click/clack/thock) or file path, empty = disabled
+	AudioVolume       float64 // 0.0-1.0
 }
 
 // DefaultCaptionOptions returns caption options with sensible defaults.
@@ -86,6 +88,7 @@ func DefaultCaptionOptions() CaptionOptions {
 		MarginLeft:        20,
 		MarginRight:       20,
 		MarginVertical:    20,
+		AudioVolume:       0.5,
 	}
 }
 
