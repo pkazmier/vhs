@@ -3,6 +3,7 @@ package main
 import (
 	_ "embed"
 	"fmt"
+	"hash/fnv"
 	"math"
 	"os"
 	"os/exec"
@@ -23,19 +24,62 @@ type AudioOptions struct {
 	Volume float64 // default 1.0, range 0.0-1.0
 }
 
-//go:embed sounds/click.wav
-var clickSound []byte
+//go:embed sounds/click_bot_1.wav
+var clickBot1Sound []byte
 
-//go:embed sounds/clack.wav
-var clackSound []byte
+//go:embed sounds/click_bot_2.wav
+var clickBot2Sound []byte
 
-//go:embed sounds/thock.wav
-var thockSound []byte
+//go:embed sounds/click_mid_1.wav
+var clickMid1Sound []byte
+
+//go:embed sounds/click_mid_2.wav
+var clickMid2Sound []byte
+
+//go:embed sounds/click_mid_3.wav
+var clickMid3Sound []byte
+
+//go:embed sounds/click_mod.wav
+var clickModSound []byte
+
+//go:embed sounds/click_top_1.wav
+var clickTop1Sound []byte
+
+//go:embed sounds/click_top_2.wav
+var clickTop2Sound []byte
 
 var presetSounds = map[string][]byte{
-	"click": clickSound,
-	"clack": clackSound,
-	"thock": thockSound,
+	"click_bot_1": clickBot1Sound,
+	"click_bot_2": clickBot2Sound,
+	"click_mid_1": clickMid1Sound,
+	"click_mid_2": clickMid2Sound,
+	"click_mid_3": clickMid3Sound,
+	"click_mod":   clickModSound,
+	"click_top_1": clickTop1Sound,
+	"click_top_2": clickTop2Sound,
+}
+
+// soundIndexForKey deterministically maps a key name to a sound index using FNV-1a.
+// It is important that we use the same sound for the same key (upper/lower)
+// across VHS invocations.
+func soundIndexForKey(key string, numSounds int) int {
+	h := fnv.New32a()
+	h.Write([]byte(strings.ToLower(key)))
+	return int(h.Sum32() % uint32(numSounds))
+}
+
+// resolveCaptionAudioFiles resolves a slice of preset names or file paths
+// to actual file paths, writing embedded presets to tempDir as needed.
+func resolveCaptionAudioFiles(presets []string, tempDir string) ([]string, error) {
+	paths := make([]string, len(presets))
+	for i, preset := range presets {
+		p, err := resolveCaptionAudioFile(preset, tempDir)
+		if err != nil {
+			return nil, err
+		}
+		paths[i] = p
+	}
+	return paths, nil
 }
 
 // resolveCaptionAudioFile returns the file path for a caption audio preset or
@@ -68,16 +112,16 @@ func GenerateAudioTrack(
 	tempDir := videoOpts.Input
 	playbackSpeed := videoOpts.PlaybackSpeed
 
-	var captionSoundFile string
-	if captionOpts.Audio != "" && len(keyEvents) > 0 {
+	var captionSoundFiles []string
+	if len(captionOpts.Audio) > 0 && len(keyEvents) > 0 {
 		var err error
-		captionSoundFile, err = resolveCaptionAudioFile(captionOpts.Audio, tempDir)
+		captionSoundFiles, err = resolveCaptionAudioFiles(captionOpts.Audio, tempDir)
 		if err != nil {
 			return "", err
 		}
 	}
 
-	hasCaptionAudio := captionSoundFile != ""
+	hasCaptionAudio := len(captionSoundFiles) > 0
 	hasAudioEvents := len(audioEvents) > 0
 
 	if !hasCaptionAudio && !hasAudioEvents {
@@ -106,16 +150,16 @@ func GenerateAudioTrack(
 	outputPath := filepath.Join(tempDir, "audio-mix.wav")
 
 	if hasCaptionAudio && len(keyEvents) > audioBatchSize {
-		return generateAudioBatched(keyEvents, audioEvents, captionSoundFile, captionOpts, playbackSpeed, totalDurationSec, tempDir, outputPath)
+		return generateAudioBatched(keyEvents, audioEvents, captionSoundFiles, captionOpts, playbackSpeed, totalDurationSec, tempDir, outputPath)
 	}
 
-	return generateAudioSingle(keyEvents, audioEvents, captionSoundFile, captionOpts, playbackSpeed, totalDurationSec, outputPath)
+	return generateAudioSingle(keyEvents, audioEvents, captionSoundFiles, captionOpts, playbackSpeed, totalDurationSec, outputPath)
 }
 
 func generateAudioSingle(
 	keyEvents []KeyEvent,
 	audioEvents []AudioEvent,
-	captionSoundFile string,
+	captionSoundFiles []string,
 	captionOpts CaptionOptions,
 	playbackSpeed float64,
 	totalDurationSec float64,
@@ -132,12 +176,14 @@ func generateAudioSingle(
 	silenceIdx := inputIdx
 	inputIdx++
 
-	// Add caption click sound as input
-	captionInputIdx := -1
-	if captionSoundFile != "" && len(keyEvents) > 0 {
-		args = append(args, "-i", captionSoundFile)
-		captionInputIdx = inputIdx
-		inputIdx++
+	// Add caption sound files as inputs (one per unique sound)
+	var captionInputIdxs []int
+	if len(captionSoundFiles) > 0 && len(keyEvents) > 0 {
+		for _, sf := range captionSoundFiles {
+			args = append(args, "-i", sf)
+			captionInputIdxs = append(captionInputIdxs, inputIdx)
+			inputIdx++
+		}
 	}
 
 	// Add audio event files as inputs
@@ -155,17 +201,18 @@ func generateAudioSingle(
 	streamIdx := 0
 
 	// Caption clicks
-	if captionInputIdx >= 0 {
+	if len(captionInputIdxs) > 0 {
 		volume := captionOpts.AudioVolume
 		for _, ke := range keyEvents {
 			delayMs := ke.StartMs
 			if playbackSpeed != 0 && playbackSpeed != 1.0 {
 				delayMs = int64(float64(delayMs) / playbackSpeed)
 			}
+			idx := captionInputIdxs[soundIndexForKey(ke.Key, len(captionInputIdxs))]
 			outLabel := fmt.Sprintf("ck%d", streamIdx)
 			filters = append(filters,
 				fmt.Sprintf("[%d:a]adelay=%d|%d,volume=%f[%s]",
-					captionInputIdx, delayMs, delayMs, volume, outLabel))
+					idx, delayMs, delayMs, volume, outLabel))
 			mixInputs = append(mixInputs, fmt.Sprintf("[%s]", outLabel))
 			streamIdx++
 		}
@@ -219,7 +266,7 @@ func generateAudioSingle(
 func generateAudioBatched(
 	keyEvents []KeyEvent,
 	audioEvents []AudioEvent,
-	captionSoundFile string,
+	captionSoundFiles []string,
 	captionOpts CaptionOptions,
 	playbackSpeed float64,
 	totalDurationSec float64,
@@ -242,7 +289,7 @@ func generateAudioBatched(
 
 		// For batches, pass no audioEvents (they go in final mix)
 		var batchAudioEvents []AudioEvent
-		_, err := generateAudioSingle(batchEvents, batchAudioEvents, captionSoundFile, captionOpts, playbackSpeed, totalDurationSec, batchOutput)
+		_, err := generateAudioSingle(batchEvents, batchAudioEvents, captionSoundFiles, captionOpts, playbackSpeed, totalDurationSec, batchOutput)
 		if err != nil {
 			return "", fmt.Errorf("failed to generate audio batch %d: %w", batch, err)
 		}

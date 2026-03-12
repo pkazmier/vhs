@@ -7,7 +7,7 @@ Set FontSize 18
 Set TypingSpeed 0.1
 Set Theme "Catppuccin Macchiato"
 
-Set CaptionAudio "thock"
+Set CaptionAudio click_mod click_bot_1 click_bot_2 click_top_1 click_top_2 click_mid_1 click_mid_2 click_mid_3
 Set CaptionAudioVolume 0.15
 
 Set OverlayFontColor "#c6a0f6"
@@ -25,4 +25,3 @@ Set AudioVolume 1.0
 Audio examples/settings/audio-overlay-demo.m4a
 Type "You can play arbitrary audio files in the video."
 Sleep 2s
-

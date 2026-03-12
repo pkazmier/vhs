@@ -607,8 +607,16 @@ func (p *Parser) parseSet() Command {
 		}
 
 	case token.CAPTION_AUDIO:
-		cmd.Args = p.peek.Literal
-		p.nextToken()
+		if p.peek.Type != token.STRING {
+			p.errors = append(p.errors, NewError(p.peek, "CaptionAudio expects at least one preset name or file path"))
+		}
+		for p.peek.Type == token.STRING {
+			if cmd.Args != "" {
+				cmd.Args += " "
+			}
+			cmd.Args += p.peek.Literal
+			p.nextToken()
+		}
 
 	case token.CAPTION_AUDIO_VOLUME:
 		cmd.Args = p.peek.Literal

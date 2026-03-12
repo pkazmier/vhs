@@ -545,6 +545,25 @@ func TestParseAudioSettings(t *testing.T) {
 		}
 	})
 
+	t.Run("Set CaptionAudio multi", func(t *testing.T) {
+		l := lexer.New(`Set CaptionAudio click clack thock`)
+		p := New(l)
+		cmds := p.Parse()
+
+		if len(p.errors) > 0 {
+			t.Fatalf("Expected no errors, got %d: %v", len(p.errors), p.errors)
+		}
+		if len(cmds) != 1 {
+			t.Fatalf("Expected 1 command, got %d", len(cmds))
+		}
+		if cmds[0].Options != "CaptionAudio" {
+			t.Errorf("Expected option CaptionAudio, got %s", cmds[0].Options)
+		}
+		if cmds[0].Args != "click clack thock" {
+			t.Errorf("Expected args 'click clack thock', got %s", cmds[0].Args)
+		}
+	})
+
 	t.Run("Set CaptionAudioVolume", func(t *testing.T) {
 		l := lexer.New(`Set CaptionAudioVolume 0.5`)
 		p := New(l)

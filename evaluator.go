@@ -202,7 +202,7 @@ func Evaluate(ctx context.Context, tape string, out io.Writer, opts ...Evaluator
 	}
 
 	// Generate audio track
-	hasCaptionAudio := v.Options.Caption.Audio != "" && len(v.KeyLogger.Events()) > 0
+	hasCaptionAudio := len(v.Options.Caption.Audio) > 0 && len(v.KeyLogger.Events()) > 0
 	hasAudioEvents := len(v.AudioEvents) > 0
 
 	if hasCaptionAudio || hasAudioEvents {

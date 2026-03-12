@@ -66,8 +66,8 @@ type CaptionOptions struct {
 	MarginLeft        int
 	MarginRight       int
 	MarginVertical    int
-	Audio             string  // preset name (click/clack/thock) or file path, empty = disabled
-	AudioVolume       float64 // 0.0-1.0
+	Audio             []string // preset names (click_mid_1, etc) or file paths, empty = disabled
+	AudioVolume       float64  // 0.0-1.0
 }
 
 // DefaultCaptionOptions returns caption options with sensible defaults.

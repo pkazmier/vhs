@@ -1108,7 +1108,7 @@ func ExecuteSetAudioVolume(c parser.Command, v *VHS) error {
 
 // ExecuteSetCaptionAudio sets the caption audio preset or file path.
 func ExecuteSetCaptionAudio(c parser.Command, v *VHS) error {
-	v.Options.Caption.Audio = c.Args
+	v.Options.Caption.Audio = strings.Fields(c.Args)
 	return nil
 }
 
