@@ -1107,8 +1107,22 @@ func ExecuteSetAudioVolume(c parser.Command, v *VHS) error {
 }
 
 // ExecuteSetCaptionAudio sets the caption audio preset or file path.
+// With no arguments, defaults to all embedded presets.
 func ExecuteSetCaptionAudio(c parser.Command, v *VHS) error {
-	v.Options.Caption.Audio = strings.Fields(c.Args)
+	if c.Args == "" {
+		v.Options.Caption.Audio = DefaultPresetSoundNames
+		return nil
+	}
+	files := strings.Fields(c.Args)
+	for _, f := range files {
+		if _, ok := presetSounds[f]; ok {
+			continue
+		}
+		if _, err := os.Stat(f); err != nil {
+			return fmt.Errorf("audio file not found: %s", f)
+		}
+	}
+	v.Options.Caption.Audio = files
 	return nil
 }
 

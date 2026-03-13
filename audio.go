@@ -48,6 +48,16 @@ var clickTop1Sound []byte
 //go:embed sounds/click_top_2.wav
 var clickTop2Sound []byte
 
+// DefaultPresetSoundNames is the sorted list of all embedded preset sound names.
+// Used as the default when Set CaptionAudio is invoked with no arguments.
+// We want a deterministic list for reproducible screencasts.
+var DefaultPresetSoundNames = []string{
+	"click_mod",
+	"click_bot_1", "click_bot_2",
+	"click_top_1", "click_top_2",
+	"click_mid_1", "click_mid_2", "click_mid_3",
+}
+
 var presetSounds = map[string][]byte{
 	"click_bot_1": clickBot1Sound,
 	"click_bot_2": clickBot2Sound,
