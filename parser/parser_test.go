@@ -559,8 +559,8 @@ func TestParseAudioSettings(t *testing.T) {
 		if cmds[0].Options != "CaptionAudio" {
 			t.Errorf("Expected option CaptionAudio, got %s", cmds[0].Options)
 		}
-		if cmds[0].Args != "click clack thock" {
-			t.Errorf("Expected args 'click clack thock', got %s", cmds[0].Args)
+		if cmds[0].Args != "click\x00clack\x00thock" {
+			t.Errorf("Expected args 'click\\x00clack\\x00thock', got %s", cmds[0].Args)
 		}
 	})
 

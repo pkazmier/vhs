@@ -609,7 +609,7 @@ func (p *Parser) parseSet() Command {
 	case token.CAPTION_AUDIO:
 		for p.peek.Type == token.STRING {
 			if cmd.Args != "" {
-				cmd.Args += " "
+				cmd.Args += "\x00"
 			}
 			cmd.Args += p.peek.Literal
 			p.nextToken()

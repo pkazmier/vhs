@@ -1113,7 +1113,7 @@ func ExecuteSetCaptionAudio(c parser.Command, v *VHS) error {
 		v.Options.Caption.Audio = DefaultPresetSoundNames
 		return nil
 	}
-	files := strings.Fields(c.Args)
+	files := strings.Split(c.Args, "\x00")
 	for _, f := range files {
 		if _, ok := presetSounds[f]; ok {
 			continue
